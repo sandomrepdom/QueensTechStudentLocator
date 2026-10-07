@@ -16,14 +16,14 @@ button.secondary{background:#536176}input{box-sizing:border-box;width:100%;font-
 </style>
 </head>
 <body>
-<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.1</p></header>
+<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.2</p></header>
 <main>
 <section class="card">
-<button id="start">📷 Start V3.1 Barcode Scanner</button>
+<button id="start">📷 Start V3.2 Barcode Scanner</button>
 <button id="stop" class="secondary">Stop Camera</button>
-<div id="reader"></div>
-<div id="status">Ready. V3.1 uses ZXing's 1-D barcode reader.</div>
-<p class="small">Hold the small barcode horizontally. Keep the full barcode and white margins visible. V3.1 continuously analyzes the camera feed for common 1-D barcode formats.</p>
+<video id="reader" playsinline muted></video>
+<div id="status">Ready. V3.2 uses ZXing's 1-D barcode reader.</div>
+<p class="small">Hold the small barcode horizontally. Keep the full barcode and white margins visible. V3.2 continuously analyzes the camera feed for common 1-D barcode formats.</p>
 </section>
 <section class="card">
 <h2>Manual fallback test</h2>
@@ -75,7 +75,7 @@ async function startScanner(){
       {video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}},
       "reader",
       (res, err)=>{
-        if(res) result(res.getText(),"ZXing V3.1");
+        if(res) result(res.getText(),"ZXing V3.2");
       }
     );
     statusEl.textContent="Camera active. Aim at the small barcode.";
