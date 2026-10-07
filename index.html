@@ -3,27 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Queens Tech Student Locator - Scanner Test V3</title>
+<title>Queens Tech Student Locator - Scanner Test V3.3</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#eef1f6}
 body{margin:0}.hero{background:#101827;color:white;padding:30px 22px}.hero h1{font-size:32px;margin:0 0 10px}.hero p{font-size:19px;color:#cbd5e1;margin:0}
-main{padding:20px;max-width:760px;margin:auto}.card{background:white;border-radius:24px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d}
+main{padding:20px;max-width:760px;margin:auto}.card{background:white;border-radius:24px;padding:20px;margin-bottom:18px}
 button{width:100%;border:0;border-radius:18px;padding:18px;font-size:21px;font-weight:800;margin-bottom:12px;background:#3563e9;color:white}
-button.secondary{background:#536176}input{box-sizing:border-box;width:100%;font-size:21px;padding:17px;border:3px solid #cbd5e1;border-radius:17px;margin:10px 0 12px}
-#reader{width:100%;overflow:hidden;border-radius:18px;background:#111;min-height:80px}video{width:100%!important}
-#status{font-size:18px;font-weight:700;line-height:1.4;padding:14px;border-radius:14px;background:#f1f5f9;margin-top:10px}
+button.secondary{background:#536176}
+.scanner{position:relative;background:#111;border-radius:18px;overflow:hidden;min-height:220px}
+#reader{display:block;width:100%;min-height:220px;object-fit:cover}
+.scanline{position:absolute;left:6%;right:6%;top:50%;height:3px;background:#fff;box-shadow:0 0 8px #fff;pointer-events:none}
+.guide{position:absolute;left:5%;right:5%;top:36%;height:28%;border:2px solid #fff;border-radius:10px;pointer-events:none}
+#status{font-size:18px;font-weight:700;line-height:1.4;padding:14px;border-radius:14px;background:#f1f5f9;margin-top:12px}
 .small{font-size:15px;color:#64748b;line-height:1.45}.success{background:#dcfce7!important;color:#166534}.bad{background:#fee2e2!important;color:#991b1b}
+input{box-sizing:border-box;width:100%;font-size:21px;padding:17px;border:3px solid #cbd5e1;border-radius:17px;margin:10px 0 12px}
 </style>
 </head>
 <body>
-<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.2</p></header>
+<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.3</p></header>
 <main>
 <section class="card">
-<button id="start">📷 Start V3.2 Barcode Scanner</button>
+<button id="start">📷 Start V3.3 Barcode Scanner</button>
 <button id="stop" class="secondary">Stop Camera</button>
-<video id="reader" playsinline muted></video>
-<div id="status">Ready. V3.2 uses ZXing's 1-D barcode reader.</div>
-<p class="small">Hold the small barcode horizontally. Keep the full barcode and white margins visible. V3.2 continuously analyzes the camera feed for common 1-D barcode formats.</p>
+<div class="scanner"><video id="reader" playsinline muted></video><div class="guide"></div><div class="scanline"></div></div>
+<div id="status">Ready. V3.3 is tuned specifically for Code 39.</div>
+<p class="small">Hold the small barcode horizontally so its vertical bars cross the white center line. Keep the entire barcode and white margins visible.</p>
 </section>
 <section class="card">
 <h2>Manual fallback test</h2>
@@ -31,15 +35,13 @@ button.secondary{background:#536176}input{box-sizing:border-box;width:100%;font-
 <button id="check">Check Student ID</button>
 </section>
 </main>
-
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 const TARGET="240054544";
 const statusEl=document.getElementById("status");
-const readerEl=document.getElementById("reader");
 let reader=null, controls=null, last="";
 
-function result(value, source){
+function showResult(value, source){
   value=String(value||"").trim();
   if(!value || value===last) return;
   last=value;
@@ -48,50 +50,43 @@ function result(value, source){
     statusEl.innerHTML="✅ SUCCESS<br>Student ID: <b>"+value+"</b><br>Read by: "+source;
     if(navigator.vibrate) navigator.vibrate(150);
     stopScanner();
-  }else{
+  } else {
     statusEl.className="bad";
-    statusEl.innerHTML="Barcode detected: <b>"+value+"</b><br>This is not the test Student ID. Try the smaller barcode.";
-    setTimeout(()=>{last="";},1200);
+    statusEl.innerHTML="Barcode detected: <b>"+value+"</b><br>Decoder is working, but this is not the test Student ID.";
+    setTimeout(()=>{last="";},1000);
   }
 }
 
 async function startScanner(){
+  stopScanner();
   statusEl.className="";
   statusEl.textContent="Starting rear camera…";
-  readerEl.innerHTML="";
   try{
     const hints=new Map();
     hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E
-    ]);
-    reader=new ZXing.BrowserMultiFormatReader(hints, 150);
-    statusEl.textContent="Starting rear camera…";
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_39]);
+    reader=new ZXing.BrowserMultiFormatReader(hints,100);
     controls=await reader.decodeFromConstraints(
       {video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}},
       "reader",
-      (res, err)=>{
-        if(res) result(res.getText(),"ZXing V3.2");
+      (res,err)=>{
+        if(res) showResult(res.getText(),"Code 39 / ZXing V3.3");
       }
     );
-    statusEl.textContent="Camera active. Aim at the small barcode.";
+    statusEl.textContent="Camera active. Place the barcode across the white center line.";
   }catch(e){
     statusEl.className="bad";
     statusEl.textContent="Could not start scanner: "+(e.message||e);
   }
 }
 function stopScanner(){
-  try{ if(controls && controls.stop) controls.stop(); }catch(e){}
-  try{ if(reader) reader.reset(); }catch(e){}
+  try{if(controls&&controls.stop)controls.stop();}catch(e){}
+  try{if(reader)reader.reset();}catch(e){}
   controls=null; reader=null;
 }
 document.getElementById("start").onclick=startScanner;
 document.getElementById("stop").onclick=()=>{stopScanner();statusEl.className="";statusEl.textContent="Camera stopped.";};
-document.getElementById("check").onclick=()=>result(document.getElementById("manual").value,"manual entry");
+document.getElementById("check").onclick=()=>showResult(document.getElementById("manual").value,"manual entry");
 </script>
 </body>
 </html>
