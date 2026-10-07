@@ -3,77 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Queens Tech Student Locator - Scanner Test</title>
+<title>Queens Tech Student Locator - Scanner Test V2</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f2f4f8;color:#111827}
-header{background:#111827;color:white;padding:26px 20px}
-header h1{margin:0;font-size:28px} header p{margin:6px 0 0;color:#cbd5e1}
-main{max-width:720px;margin:auto;padding:20px}
-.card{background:white;border-radius:22px;padding:20px;box-shadow:0 4px 18px #00000012;margin-bottom:18px}
-button{width:100%;border:0;border-radius:16px;padding:18px;font-size:22px;font-weight:750;background:#2563eb;color:white}
-#reader{margin-top:16px;overflow:hidden;border-radius:16px}
-.status{font-size:18px;line-height:1.45}
-.success{background:#dcfce7;border:2px solid #22c55e}
-code{font-size:19px;font-weight:700}
-.small{font-size:14px;color:#64748b}
+header{background:#111827;color:white;padding:24px 20px}
+h1{margin:0;font-size:27px} header p{margin:6px 0 0;color:#cbd5e1}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:white;border-radius:22px;padding:18px;box-shadow:0 4px 18px #00000012;margin-bottom:16px}
+button{width:100%;border:0;border-radius:16px;padding:17px;font-size:21px;font-weight:750;background:#2563eb;color:white;margin-bottom:10px}
+button.secondary{background:#475569}
+#reader{margin-top:8px;overflow:hidden;border-radius:16px}
+#reader video{width:100%!important}
+.status{font-size:18px;line-height:1.45}.success{background:#dcfce7;border:2px solid #22c55e}
+code{font-size:19px;font-weight:700}.small{font-size:14px;color:#64748b}
+input{box-sizing:border-box;width:100%;padding:16px;border:2px solid #cbd5e1;border-radius:14px;font-size:20px;margin:8px 0 12px}
 </style>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-<header>
-<h1>Queens Tech Student Locator</h1>
-<p>Safe barcode scanner test</p>
-</header>
+<header><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V2</p></header>
 <main>
 <div class="card">
-<button id="scan">📷 Scan Student ID</button>
+<button id="scan">📷 Start Barcode Scanner</button>
+<button id="stop" class="secondary">Stop Camera</button>
 <div id="reader"></div>
+<p class="small">Hold the small barcode sideways across the wide scan box. Keep the entire barcode plus white space on both ends visible.</p>
 </div>
-<div id="result" class="card status">
-No barcode scanned yet.<br><span class="small">Test target: the small barcode that reads 240054544.</span>
+<div class="card">
+<strong>Manual fallback test</strong>
+<input id="manual" inputmode="numeric" placeholder="Enter Student ID">
+<button id="manualBtn">Check Student ID</button>
 </div>
+<div id="result" class="card status">Waiting for barcode.<br><span class="small">Test target: 240054544</span></div>
 </main>
 <script>
 const target="240054544";
-let scanner=null;
 const result=document.getElementById("result");
+let scanner=null, running=false;
 
 function showResult(value){
-  result.classList.remove("success");
-  if(value===target){
-    result.classList.add("success");
-    result.innerHTML="<strong>✅ SUCCESS</strong><br>Student ID barcode recognized:<br><code>"+value+"</code><br><br>The camera-to-ID portion of the app is working.";
-  } else {
-    result.innerHTML="<strong>Barcode read:</strong><br><code>"+value+"</code><br><br>This scanner test is expecting <code>"+target+"</code>.";
-  }
+ value=String(value).trim();
+ result.classList.remove("success");
+ if(value===target){
+   result.classList.add("success");
+   result.innerHTML="<strong>✅ SUCCESS</strong><br>Student ID recognized:<br><code>"+value+"</code><br><br>Scanner-to-ID lookup is working.";
+ } else {
+   result.innerHTML="<strong>Barcode read:</strong><br><code>"+value+"</code><br><br>Expected test ID: <code>"+target+"</code>";
+ }
 }
+async function stopScanner(){
+ if(scanner && running){try{await scanner.stop();}catch(e){} running=false;}
+}
+document.getElementById("stop").onclick=stopScanner;
+document.getElementById("manualBtn").onclick=()=>showResult(document.getElementById("manual").value);
 
-document.getElementById("scan").addEventListener("click", async ()=>{
-  if(!window.isSecureContext){
-    result.innerHTML="<strong>Camera unavailable.</strong><br>This page must be opened from the HTTPS GitHub Pages address.";
-    return;
-  }
-  try{
-    if(scanner){ try{await scanner.stop();}catch(e){} }
-    scanner=new Html5Qrcode("reader");
-    const cameras=await Html5Qrcode.getCameras();
-    if(!cameras || !cameras.length) throw new Error("No camera found");
-    let cam=cameras[0].id;
-    const rear=cameras.find(c=>/back|rear|environment/i.test(c.label));
-    if(rear) cam=rear.id;
-    await scanner.start(
-      cam,
-      {fps:10,qrbox:{width:300,height:140}},
-      async decoded=>{
-        showResult(decoded.trim());
-        try{await scanner.stop();}catch(e){}
-      },
-      ()=>{}
-    );
-  }catch(e){
-    result.innerHTML="<strong>Could not start camera.</strong><br>Allow camera permission for this site, then try again.<br><span class='small'>"+String(e)+"</span>";
-  }
-});
+document.getElementById("scan").onclick=async()=>{
+ if(!window.isSecureContext){result.innerHTML="<strong>HTTPS required.</strong>";return;}
+ try{
+   await stopScanner();
+   scanner=new Html5Qrcode("reader", {
+     formatsToSupport:[
+       Html5QrcodeSupportedFormats.CODE_128,
+       Html5QrcodeSupportedFormats.CODE_39,
+       Html5QrcodeSupportedFormats.CODE_93,
+       Html5QrcodeSupportedFormats.ITF,
+       Html5QrcodeSupportedFormats.CODABAR,
+       Html5QrcodeSupportedFormats.EAN_13,
+       Html5QrcodeSupportedFormats.EAN_8,
+       Html5QrcodeSupportedFormats.UPC_A,
+       Html5QrcodeSupportedFormats.UPC_E
+     ],
+     verbose:false
+   });
+   const config={
+     fps:20,
+     qrbox:(vw,vh)=>({width:Math.floor(vw*.92),height:Math.max(110,Math.floor(vh*.32))}),
+     aspectRatio:1.777778,
+     disableFlip:true,
+     experimentalFeatures:{useBarCodeDetectorIfSupported:true},
+     videoConstraints:{
+       facingMode:{ideal:"environment"},
+       width:{ideal:1920},
+       height:{ideal:1080},
+       focusMode:"continuous"
+     }
+   };
+   await scanner.start({facingMode:"environment"},config,async decoded=>{
+      showResult(decoded);
+      await stopScanner();
+   },()=>{});
+   running=true;
+ }catch(e){
+   result.innerHTML="<strong>Could not start/tune camera.</strong><br>Allow camera access and reload the page.<br><span class='small'>"+String(e)+"</span>";
+ }
+};
 </script>
 </body>
 </html>
