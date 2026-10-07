@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Queens Tech Student Locator - Scanner Test V3.3</title>
+<title>Queens Tech Student Locator - Scanner Test V3.4</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#eef1f6}
 body{margin:0}.hero{background:#101827;color:white;padding:30px 22px}.hero h1{font-size:32px;margin:0 0 10px}.hero p{font-size:19px;color:#cbd5e1;margin:0}
@@ -20,13 +20,13 @@ input{box-sizing:border-box;width:100%;font-size:21px;padding:17px;border:3px so
 </style>
 </head>
 <body>
-<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.3</p></header>
+<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.4</p></header>
 <main>
 <section class="card">
-<button id="start">📷 Start V3.3 Barcode Scanner</button>
+<button id="start">📷 Start V3.4 Barcode Scanner</button>
 <button id="stop" class="secondary">Stop Camera</button>
 <div class="scanner"><video id="reader" playsinline muted></video><div class="guide"></div><div class="scanline"></div></div>
-<div id="status">Ready. V3.3 is tuned specifically for Code 39.</div>
+<div id="status">Ready. V3.4 will test the major 1-D barcode formats.</div>
 <p class="small">Hold the small barcode horizontally so its vertical bars cross the white center line. Keep the entire barcode and white margins visible.</p>
 </section>
 <section class="card">
@@ -52,7 +52,7 @@ function showResult(value, source){
     stopScanner();
   } else {
     statusEl.className="bad";
-    statusEl.innerHTML="Barcode detected: <b>"+value+"</b><br>Decoder is working, but this is not the test Student ID.";
+    statusEl.innerHTML="Barcode detected: <b>"+value+"</b><br>Detected by: "+source+"<br>Decoder is working, but this is not the test Student ID.";
     setTimeout(()=>{last="";},1000);
   }
 }
@@ -64,13 +64,23 @@ async function startScanner(){
   try{
     const hints=new Map();
     hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_39]);
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.CODE_93,
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.CODABAR,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E
+    ]);
     reader=new ZXing.BrowserMultiFormatReader(hints,100);
     controls=await reader.decodeFromConstraints(
       {video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}},
       "reader",
       (res,err)=>{
-        if(res) showResult(res.getText(),"Code 39 / ZXing V3.3");
+        if(res) showResult(res.getText(),"ZXing V3.4" + (res.getBarcodeFormat ? " / format "+res.getBarcodeFormat() : "")");
       }
     );
     statusEl.textContent="Camera active. Place the barcode across the white center line.";
