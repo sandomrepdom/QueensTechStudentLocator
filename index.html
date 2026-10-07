@@ -16,14 +16,14 @@ button.secondary{background:#536176}input{box-sizing:border-box;width:100%;font-
 </style>
 </head>
 <body>
-<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3</p></header>
+<header class="hero"><h1>Queens Tech Student Locator</h1><p>1-D Student ID Scanner Test V3.1</p></header>
 <main>
 <section class="card">
-<button id="start">📷 Start V3 Barcode Scanner</button>
+<button id="start">📷 Start V3.1 Barcode Scanner</button>
 <button id="stop" class="secondary">Stop Camera</button>
 <div id="reader"></div>
-<div id="status">Ready. V3 uses ZXing's 1-D barcode reader.</div>
-<p class="small">Hold the small barcode horizontally. Keep the full barcode and white margins visible. V3 continuously analyzes the camera feed for common 1-D barcode formats.</p>
+<div id="status">Ready. V3.1 uses ZXing's 1-D barcode reader.</div>
+<p class="small">Hold the small barcode horizontally. Keep the full barcode and white margins visible. V3.1 continuously analyzes the camera feed for common 1-D barcode formats.</p>
 </section>
 <section class="card">
 <h2>Manual fallback test</h2>
@@ -70,16 +70,15 @@ async function startScanner(){
       ZXing.BarcodeFormat.UPC_E
     ]);
     reader=new ZXing.BrowserMultiFormatReader(hints, 150);
-    const devices=await ZXing.BrowserCodeReader.listVideoInputDevices();
-    let deviceId;
-    if(devices.length){
-      const rear=devices.find(d=>/back|rear|environment/i.test(d.label));
-      deviceId=(rear||devices[devices.length-1]).deviceId;
-    }
+    statusEl.textContent="Starting rear camera…";
+    controls=await reader.decodeFromConstraints(
+      {video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}},
+      "reader",
+      (res, err)=>{
+        if(res) result(res.getText(),"ZXing V3.1");
+      }
+    );
     statusEl.textContent="Camera active. Aim at the small barcode.";
-    controls=await reader.decodeFromVideoDevice(deviceId, "reader", (res, err)=>{
-      if(res) result(res.getText(),"ZXing V3");
-    });
   }catch(e){
     statusEl.className="bad";
     statusEl.textContent="Could not start scanner: "+(e.message||e);
