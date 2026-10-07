@@ -1,122 +1,20 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Queens Tech Student Locator V3.8</title>
-<style>
-body{margin:0;background:#edf1f7;color:#152033;font:18px system-ui,-apple-system,sans-serif}header{background:#111827;color:white;padding:25px 20px}h1{font-size:30px;margin:0 0 8px}header p{margin:0;color:#cbd5e1}main{max-width:720px;margin:auto;padding:18px}.card{background:white;padding:20px;border-radius:22px;margin-bottom:16px}button{display:block;width:100%;padding:18px;border:0;border-radius:15px;background:#3262e9;color:white;font-size:19px;font-weight:750;margin-bottom:12px}.secondary{background:#526178}.view{position:relative;background:#111;border-radius:14px;overflow:hidden}video{display:block;width:100%;max-height:480px;object-fit:cover}.line{position:absolute;left:5%;right:5%;top:50%;border-top:2px solid white;pointer-events:none}#status{margin-top:14px;padding:14px;border-radius:12px;background:#eef2ff;overflow-wrap:anywhere;white-space:pre-line}.small{font-size:15px;color:#536175}input{width:100%;box-sizing:border-box;padding:15px;font-size:19px;border:2px solid #cbd5e1;border-radius:12px;margin:10px 0}.success{background:#dcfce7!important}.error{background:#fee2e2!important}
-</style>
-</head>
-<body>
-<header><h1>Queens Tech Student Locator</h1><p>Barcode Scanner Test V3.8</p></header>
-<main><section class="card">
-<button id="start">📷 Start Rear Camera & Scan</button><button id="capture">📸 Capture & Decode Current Frame</button><button class="secondary" id="stop">Stop Camera</button>
-<div class="view"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
-<div id="status">Ready. This version uses the proven direct rear-camera method.</div>
-<p class="small">Hold the complete small barcode horizontally across the white line. Leave white space at both ends. This is a test only, with no student schedule data.</p>
-</section><section class="card"><strong>Manual test</strong><input id="manual" inputmode="numeric" placeholder="Enter test ID"><button id="check">Check ID</button></section></main>
-<canvas id="canvas" hidden></canvas>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Queens Tech Scanner V3.9</title>
+<style>body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}header{background:#101827;color:white;padding:25px}main{max-width:700px;margin:auto;padding:18px}.card{background:white;padding:20px;border-radius:20px;margin:15px 0}button,input{box-sizing:border-box;width:100%;padding:16px;font-size:19px;border-radius:13px;margin:8px 0}button{background:#3262e8;color:white;border:0;font-weight:bold}input{border:2px solid #aab5c5}video{width:100%;border-radius:12px;background:black}#status{padding:14px;background:#e8edf9;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}small{color:#59677b}</style></head>
+<body><header><h1>Queens Tech Student Locator</h1>1-D Barcode Test V3.9 · Quagga2</header><main><section class="card"><button id="start">Start rear camera</button><button id="capture">Capture &amp; Decode</button><button id="stop">Stop camera</button><video id="video" playsinline autoplay muted></video><div id="status">Ready. No student records in this test.</div><p><small>Keep the entire small barcode and white margins in view. Capture &amp; Decode processes a still frame using Quagga2.</small></p></section><section class="card"><label for="manual">Manual test ID</label><input id="manual" inputmode="numeric" placeholder="Enter test ID"><button id="manualBtn">Check ID</button></section></main>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
 <script>
 'use strict';
-const TEST_ID='240054544';
-const video=document.getElementById('video');
-const canvas=document.getElementById('canvas');
-const status=document.getElementById('status');
-let stream=null, timer=null, busy=false, detector=null, zreader=null, engine='';
-function message(text,cls=''){status.textContent=text;status.className=cls;}
-function detected(value,format){
-  value=String(value||'').trim();
-  if(!value)return;
-  if(value===TEST_ID){message('✅ SUCCESS! Student ID: '+value+'\nBarcode format: '+format,'success');stopCamera();}
-  else message('Barcode detected: '+value+'\nFormat: '+format+'\nTry the smaller barcode.');
-}
-function stopCamera(){
-  if(timer){clearInterval(timer);timer=null;}
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-  video.srcObject=null;busy=false;
-}
-async function setupDecoder(){
-  detector=null;zreader=null;
-  if('BarcodeDetector' in window){
-    try{
-      const supported=await BarcodeDetector.getSupportedFormats();
-      const formats=['code_128','code_39','code_93','itf','codabar','ean_13','ean_8','upc_a','upc_e'].filter(f=>supported.includes(f));
-      if(formats.length){detector=new BarcodeDetector({formats});engine='Native BarcodeDetector ('+formats.join(', ')+')';return;}
-    }catch(e){}
-  }
-  if(typeof ZXing==='undefined')throw new Error('ZXing library did not load. Check internet access.');
-  const hints=new Map();
-  hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.CODE_93,ZXing.BarcodeFormat.ITF,ZXing.BarcodeFormat.CODABAR,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E]);
-  zreader=new ZXing.MultiFormatReader();zreader.setHints(hints);engine='ZXing frame decoder';
-}
-async function scanFrame(){
-  if(busy||!stream||video.readyState<2)return;
-  busy=true;
-  try{
-    const w=video.videoWidth,h=video.videoHeight;
-    if(!w||!h)return;
-    canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(video,0,0,w,h);
-    if(detector){
-      const results=await detector.detect(canvas);
-      if(results.length)detected(results[0].rawValue,results[0].format);
-    }else if(zreader){
-      const pixels=ctx.getImageData(0,0,w,h);
-      const source=new ZXing.RGBLuminanceSource(pixels.data,w,h);
-      const bitmap=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source));
-      try{const result=zreader.decode(bitmap);detected(result.getText(),String(result.getBarcodeFormat()));}
-      catch(e){/* Most frames do not contain a decodable barcode. */}
-      finally{zreader.reset();}
-    }
-  }catch(e){message('Decoder error: '+(e.message||e),'error');}
-  finally{busy=false;}
-}
-async function captureDecode(){
-  if(!stream || video.readyState<2){message('Start the camera first.','error');return;}
-  if(busy){message('Decoder is busy. Try again in a moment.');return;}
-  if(timer){clearInterval(timer);timer=null;}
-  busy=true;
-  try{
-    const w=video.videoWidth,h=video.videoHeight;
-    if(!w||!h)throw new Error('Video has no available frame.');
-    canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(video,0,0,w,h);
-    message('Captured '+w+' × '+h+' frame. Decoding with '+engine+'…');
-    if(detector){
-      const found=await detector.detect(canvas);
-      if(found.length)detected(found[0].rawValue,found[0].format);
-      else message('No barcode decoded in captured '+w+' × '+h+' frame. Try better focus or lighting.');
-    }else if(zreader){
-      const pixels=ctx.getImageData(0,0,w,h);
-      const source=new ZXing.RGBLuminanceSource(pixels.data,w,h);
-      const bitmap=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source));
-      try{const found=zreader.decode(bitmap);detected(found.getText(),String(found.getBarcodeFormat()));}
-      catch(e){message('Captured '+w+' × '+h+' frame, but ZXing could not decode it. Error: '+(e.name||'DecodeError')+' / '+(e.message||'No match'));}
-      finally{zreader.reset();}
-    }else message('No decoder initialized. Restart the camera.','error');
-  }catch(e){message('Capture/decode error: '+(e.message||e),'error');}
-  finally{busy=false;}
-}
-async function startCamera(){
-  stopCamera();message('Requesting rear camera…');
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
-    video.srcObject=stream;
-    await video.play();
-    message('Rear camera opened. Loading barcode decoder…');
-    await setupDecoder();
-    message('✅ Rear camera active.\nDecoder: '+engine+'\nHold the small barcode across the white line.');
-    timer=setInterval(scanFrame,400);
-  }catch(e){message('Camera/decoder setup error: '+(e.message||e),'error');}
-}
-document.getElementById('start').addEventListener('click',startCamera);
-document.getElementById('capture').addEventListener('click',captureDecode);
-document.getElementById('stop').addEventListener('click',()=>{stopCamera();message('Camera stopped.');});
-document.getElementById('check').addEventListener('click',()=>detected(document.getElementById('manual').value,'manual entry'));
-window.addEventListener('pagehide',stopCamera);
-</script>
-</body></html>
+const video=document.getElementById('video'), status=document.getElementById('status');
+const expected='240054544';let stream=null;
+function message(m){status.textContent=m;}
+function decoded(value,format){message((value===expected?'SUCCESS: ':'Detected: ')+value+'\nFormat: '+(format||'unknown')+(value===expected?'\nTest student ID matched.':''));}
+async function start(){try{if(stream)stop();stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();message('Rear camera active. Position barcode and tap Capture & Decode.');}catch(e){message('Camera error: '+e.name+' '+e.message);}}
+function stop(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.srcObject=null;}
+function capture(){if(!stream||!video.videoWidth){message('Start the camera first.');return;}if(!window.Quagga){message('Quagga2 library did not load. Check network connection.');return;}const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);const data=canvas.toDataURL('image/png');message('Captured '+canvas.width+' × '+canvas.height+'. Decoding…');try{Quagga.decodeSingle({src:data,numOfWorkers:0,locate:true,inputStream:{size:1600},decoder:{readers:['code_128_reader','code_39_reader','code_39_vin_reader','code_93_reader','i2of5_reader','2of5_reader','codabar_reader','ean_reader','ean_8_reader','upc_reader','upc_e_reader']},locator:{halfSample:false,patchSize:'medium'}},result=>{if(result&&result.codeResult){decoded(result.codeResult.code,result.codeResult.format);}else{message('Quagga2 examined the captured frame but did not recognize a barcode. Try moving farther away or improving lighting.');}});}catch(e){message('Decode error: '+e.message);}}
+document.getElementById('start').addEventListener('click',start);
+document.getElementById('capture').addEventListener('click',capture);
+document.getElementById('stop').addEventListener('click',()=>{stop();message('Camera stopped.');});
+document.getElementById('manualBtn').addEventListener('click',()=>decoded(document.getElementById('manual').value.trim(),'manual'));
+window.addEventListener('pagehide',stop);
+</script></body></html>
