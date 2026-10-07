@@ -1,109 +1,28 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Queens Tech Scanner V3.5</title>
-<style>body{margin:0;
-background:#eef1f6;
-font:18px system-ui;
-color:#111827}header{background:#111827;
-color:white;
-padding:28px 20px}h1{font-size:30px;
-margin:0}main{max-width:700px;
-margin:auto;
-padding:20px}.card{background:white;
-padding:20px;
-border-radius:22px}button,input{box-sizing:border-box;
-width:100%;
-padding:17px;
-margin:8px 0;
-font-size:19px;
-border-radius:14px}button{background:#3463eb;
-color:white;
-border:0;
-font-weight:bold}button.secondary{background:#526076}input{border:2px solid #cbd5e1}video{width:100%;
-display:block;
-background:#111;
-border-radius:12px;
-min-height:190px}.viewer{position:relative}.line{position:absolute;
-top:50%;
-left:7%;
-right:7%;
-height:2px;
-background:white;
-pointer-events:none}#status{background:#eef2ff;
-padding:15px;
-border-radius:12px;
-overflow-wrap:anywhere;
-margin-top:12px}</style>
-</head>
-<body>
-<header>
-<h1>Queens Tech Student Locator</h1>
-<p>1-D Barcode Scanner Test V3.5</p>
-</header>
-<main>
-<div class="card">
-<button id="start">📷 Start Scanner</button>
-<button id="stop" class="secondary">Stop Camera</button>
-<div class="viewer">
-<video id="reader" playsinline muted autoplay>
-</video>
-<div class="line">
-</div>
-</div>
-<div id="status">Loading scanner library…</div>
-<p>Hold the small barcode horizontally across the white line, with white space at both ends.</p>
-<input id="manual" inputmode="numeric" placeholder="Manual student ID">
-<button id="check">Check ID</button>
-</div>
-</main>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js">
-</script>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Queens Tech Camera Diagnostic V3.6</title>
+<style>body{font:18px system-ui;background:#edf1f7;margin:0;color:#142033}header{background:#142033;color:white;padding:25px}main{padding:18px;max-width:700px;margin:auto}.panel{background:white;border-radius:18px;padding:18px}button{display:block;width:100%;border:0;border-radius:12px;background:#315ce8;color:white;padding:17px;margin:12px 0;font-size:18px}button.alt{background:#64748b}video{width:100%;background:#111;border-radius:12px;min-height:220px}#status{white-space:pre-wrap;background:#edf1f7;padding:15px;border-radius:12px;overflow-wrap:anywhere}input{font-size:20px;padding:12px;max-width:90%}</style></head>
+<body><header><h1>Queens Tech Student Locator</h1>Camera Diagnostic V3.6</header><main><section class="panel"><button id="start">📷 Open Rear Camera (Direct Test)</button><button class="alt" id="stop">Stop Camera</button><video id="camera" autoplay muted playsinline></video><p id="status">Ready. Tap Open Rear Camera.</p><p>First, we are testing the camera directly, without a barcode library. No student records are included in this test.</p><input id="manual" inputmode="numeric" placeholder="Test ID"><button id="check">Test Manual ID</button></section></main>
 <script>
-(function(){'use strict';
-const status=document.getElementById('status');
-let scanner=null,controls=null,busy=false,found=false;
-const formats=['CODE_128','CODE_39','CODE_93','ITF','CODABAR','EAN_13','EAN_8','UPC_A','UPC_E'];
-function message(t){status.textContent=t;
-}
-function stop(){try{if(controls&&controls.stop)controls.stop();
-}catch(e){}try{if(scanner)scanner.reset();
-}catch(e){}controls=null;
-scanner=null;
-busy=false;
-}
-function detected(value,format){value=String(value).trim();
-status.textContent=(value==='240054544'?'✅ SUCCESS':'Barcode detected')+' | ID: '+value+' | Format: '+format;
-if(value==='240054544'){found=true;
-stop();
-}}
-document.getElementById('start').addEventListener('click',async function(){if(busy)return;
-found=false;
-busy=true;
-message('Starting rear camera…');
-try{if(!window.ZXing)throw Error('ZXing library did not load. Check internet access.');
-const hints=new Map();
-hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,formats.map(k=>ZXing.BarcodeFormat[k]));
-scanner=new ZXing.BrowserMultiFormatReader(hints,150);
-controls=await scanner.decodeFromConstraints({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}},'reader',function(result,error){if(result){const f=result.getBarcodeFormat();
-const name=Object.keys(ZXing.BarcodeFormat).find(k=>ZXing.BarcodeFormat[k]===f)||String(f);
-detected(result.getText(),name);
-}});
-if(!found)message('Camera active. Align the small barcode with the white line.');
-}catch(e){stop();
-message('Scanner error: '+(e.message||String(e)));
-}});
-document.getElementById('stop').addEventListener('click',()=>{stop();
-message('Camera stopped.');
-});
-document.getElementById('check').addEventListener('click',()=>detected(document.getElementById('manual').value,'manual'));
+(function(){
+'use strict';
+var video=document.getElementById('camera'),status=document.getElementById('status'),stream=null;
+function report(t){status.textContent=t;}
+function stop(){if(stream){stream.getTracks().forEach(function(track){track.stop();});stream=null;}video.srcObject=null;}
+document.getElementById('start').onclick=async function(){
+ report('Button works. Requesting rear camera…');
+ try{
+  if(!window.isSecureContext)throw Error('This page is not in a secure HTTPS context.');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Camera API is unavailable in this browser.');
+  stop();
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});}
+  catch(first){stream=await navigator.mediaDevices.getUserMedia({audio:false,video:true});}
+  video.srcObject=stream;
+  await video.play();
+  report('✅ Camera opened directly. Live video is working.');
+ }catch(e){report('❌ Camera error: '+(e.name||'Error')+': '+(e.message||String(e)));}
+};
+document.getElementById('stop').onclick=function(){stop();report('Camera stopped.');};
+document.getElementById('check').onclick=function(){var v=document.getElementById('manual').value.trim();report(v==='240054544'?'✅ Test ID matched.':'Entered: '+v+' (test ID is 240054544)');};
 window.addEventListener('pagehide',stop);
-message(window.ZXing?'Ready. Tap Start Scanner.':'Scanner library unavailable. Check connection and reload.');
 })();
-
-</script>
-</body>
-</html>
+</script></body></html>
