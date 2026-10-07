@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Queens Tech Student Locator V3.7</title>
+<title>Queens Tech Student Locator V3.8</title>
 <style>
 body{margin:0;background:#edf1f7;color:#152033;font:18px system-ui,-apple-system,sans-serif}header{background:#111827;color:white;padding:25px 20px}h1{font-size:30px;margin:0 0 8px}header p{margin:0;color:#cbd5e1}main{max-width:720px;margin:auto;padding:18px}.card{background:white;padding:20px;border-radius:22px;margin-bottom:16px}button{display:block;width:100%;padding:18px;border:0;border-radius:15px;background:#3262e9;color:white;font-size:19px;font-weight:750;margin-bottom:12px}.secondary{background:#526178}.view{position:relative;background:#111;border-radius:14px;overflow:hidden}video{display:block;width:100%;max-height:480px;object-fit:cover}.line{position:absolute;left:5%;right:5%;top:50%;border-top:2px solid white;pointer-events:none}#status{margin-top:14px;padding:14px;border-radius:12px;background:#eef2ff;overflow-wrap:anywhere;white-space:pre-line}.small{font-size:15px;color:#536175}input{width:100%;box-sizing:border-box;padding:15px;font-size:19px;border:2px solid #cbd5e1;border-radius:12px;margin:10px 0}.success{background:#dcfce7!important}.error{background:#fee2e2!important}
 </style>
 </head>
 <body>
-<header><h1>Queens Tech Student Locator</h1><p>Barcode Scanner Test V3.7</p></header>
+<header><h1>Queens Tech Student Locator</h1><p>Barcode Scanner Test V3.8</p></header>
 <main><section class="card">
-<button id="start">📷 Start Rear Camera & Scan</button><button class="secondary" id="stop">Stop Camera</button>
+<button id="start">📷 Start Rear Camera & Scan</button><button id="capture">📸 Capture & Decode Current Frame</button><button class="secondary" id="stop">Stop Camera</button>
 <div class="view"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
 <div id="status">Ready. This version uses the proven direct rear-camera method.</div>
 <p class="small">Hold the complete small barcode horizontally across the white line. Leave white space at both ends. This is a test only, with no student schedule data.</p>
@@ -74,6 +74,33 @@ async function scanFrame(){
   }catch(e){message('Decoder error: '+(e.message||e),'error');}
   finally{busy=false;}
 }
+async function captureDecode(){
+  if(!stream || video.readyState<2){message('Start the camera first.','error');return;}
+  if(busy){message('Decoder is busy. Try again in a moment.');return;}
+  if(timer){clearInterval(timer);timer=null;}
+  busy=true;
+  try{
+    const w=video.videoWidth,h=video.videoHeight;
+    if(!w||!h)throw new Error('Video has no available frame.');
+    canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(video,0,0,w,h);
+    message('Captured '+w+' × '+h+' frame. Decoding with '+engine+'…');
+    if(detector){
+      const found=await detector.detect(canvas);
+      if(found.length)detected(found[0].rawValue,found[0].format);
+      else message('No barcode decoded in captured '+w+' × '+h+' frame. Try better focus or lighting.');
+    }else if(zreader){
+      const pixels=ctx.getImageData(0,0,w,h);
+      const source=new ZXing.RGBLuminanceSource(pixels.data,w,h);
+      const bitmap=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source));
+      try{const found=zreader.decode(bitmap);detected(found.getText(),String(found.getBarcodeFormat()));}
+      catch(e){message('Captured '+w+' × '+h+' frame, but ZXing could not decode it. Error: '+(e.name||'DecodeError')+' / '+(e.message||'No match'));}
+      finally{zreader.reset();}
+    }else message('No decoder initialized. Restart the camera.','error');
+  }catch(e){message('Capture/decode error: '+(e.message||e),'error');}
+  finally{busy=false;}
+}
 async function startCamera(){
   stopCamera();message('Requesting rear camera…');
   try{
@@ -87,6 +114,7 @@ async function startCamera(){
   }catch(e){message('Camera/decoder setup error: '+(e.message||e),'error');}
 }
 document.getElementById('start').addEventListener('click',startCamera);
+document.getElementById('capture').addEventListener('click',captureDecode);
 document.getElementById('stop').addEventListener('click',()=>{stopCamera();message('Camera stopped.');});
 document.getElementById('check').addEventListener('click',()=>detected(document.getElementById('manual').value,'manual entry'));
 window.addEventListener('pagehide',stopCamera);
