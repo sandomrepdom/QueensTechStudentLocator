@@ -1,20 +1,124 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Queens Tech Scanner V3.9</title>
-<style>body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}header{background:#101827;color:white;padding:25px}main{max-width:700px;margin:auto;padding:18px}.card{background:white;padding:20px;border-radius:20px;margin:15px 0}button,input{box-sizing:border-box;width:100%;padding:16px;font-size:19px;border-radius:13px;margin:8px 0}button{background:#3262e8;color:white;border:0;font-weight:bold}input{border:2px solid #aab5c5}video{width:100%;border-radius:12px;background:black}#status{padding:14px;background:#e8edf9;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}small{color:#59677b}</style></head>
-<body><header><h1>Queens Tech Student Locator</h1>1-D Barcode Test V3.9 · Quagga2</header><main><section class="card"><button id="start">Start rear camera</button><button id="capture">Capture &amp; Decode</button><button id="stop">Stop camera</button><video id="video" playsinline autoplay muted></video><div id="status">Ready. No student records in this test.</div><p><small>Keep the entire small barcode and white margins in view. Capture &amp; Decode processes a still frame using Quagga2.</small></p></section><section class="card"><label for="manual">Manual test ID</label><input id="manual" inputmode="numeric" placeholder="Enter test ID"><button id="manualBtn">Check ID</button></section></main>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Queens Tech Student Locator V4.0</title>
+<style>
+body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}
+header{background:#101827;color:white;padding:25px}
+main{max-width:700px;margin:auto;padding:18px}
+.card{background:white;padding:20px;border-radius:20px;margin:15px 0}
+button,input{box-sizing:border-box;width:100%;padding:16px;font-size:19px;border-radius:13px;margin:8px 0}
+button{background:#3262e8;color:white;border:0;font-weight:bold}
+button.secondary{background:#59677b}
+input{border:2px solid #aab5c5}
+.camera{position:relative}
+video{display:block;width:100%;border-radius:12px;background:#111}
+.line{position:absolute;top:50%;left:8%;right:8%;border-top:2px solid white;pointer-events:none}
+#status{padding:14px;background:#e8edf9;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+small{color:#59677b}
+</style>
+</head>
+<body>
+<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.0</header>
+<main>
+<section class="card">
+<button id="start">Start automatic scanning</button>
+<button id="capture" class="secondary">Capture &amp; Decode (backup)</button>
+<button id="stop" class="secondary">Stop camera</button>
+<div class="camera"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
+<div id="status">Ready. This test contains no student schedules.</div>
+<p><small>Keep the entire small barcode and a little white space at each end in view. Scanning starts automatically when the camera opens.</small></p>
+</section>
+<section class="card">
+<label for="manual">Manual test ID</label>
+<input id="manual" inputmode="numeric" placeholder="Enter test ID">
+<button id="manualBtn">Check ID</button>
+</section>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
 <script>
 'use strict';
-const video=document.getElementById('video'), status=document.getElementById('status');
-const expected='240054544';let stream=null;
-function message(m){status.textContent=m;}
-function decoded(value,format){message((value===expected?'SUCCESS: ':'Detected: ')+value+'\nFormat: '+(format||'unknown')+(value===expected?'\nTest student ID matched.':''));}
-async function start(){try{if(stream)stop();stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();message('Rear camera active. Position barcode and tap Capture & Decode.');}catch(e){message('Camera error: '+e.name+' '+e.message);}}
-function stop(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.srcObject=null;}
-function capture(){if(!stream||!video.videoWidth){message('Start the camera first.');return;}if(!window.Quagga){message('Quagga2 library did not load. Check network connection.');return;}const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);const data=canvas.toDataURL('image/png');message('Captured '+canvas.width+' × '+canvas.height+'. Decoding…');try{Quagga.decodeSingle({src:data,numOfWorkers:0,locate:true,inputStream:{size:1600},decoder:{readers:['code_128_reader','code_39_reader','code_39_vin_reader','code_93_reader','i2of5_reader','2of5_reader','codabar_reader','ean_reader','ean_8_reader','upc_reader','upc_e_reader']},locator:{halfSample:false,patchSize:'medium'}},result=>{if(result&&result.codeResult){decoded(result.codeResult.code,result.codeResult.format);}else{message('Quagga2 examined the captured frame but did not recognize a barcode. Try moving farther away or improving lighting.');}});}catch(e){message('Decode error: '+e.message);}}
+const video=document.getElementById('video');
+const statusEl=document.getElementById('status');
+const expected='240054544';
+let stream=null, running=false, busy=false, timer=null, attempts=0;
+const canvas=document.createElement('canvas');
+function message(m){statusEl.textContent=m;}
+function decoded(value,format){
+  running=false;
+  clearTimeout(timer);
+  message((value===expected?'SUCCESS: ':'Detected: ')+value+'\\nFormat: '+format+
+    (value===expected?'\\nTest student ID matched.':'\\nTry the smaller barcode.'));
+  if(value===expected && navigator.vibrate)navigator.vibrate(150);
+}
+function stop(){
+  running=false;
+  clearTimeout(timer);
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  video.srcObject=null;
+}
+async function start(){
+  stop();
+  attempts=0;
+  if(!window.Quagga){message('Quagga2 did not load. Check internet access.');return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}
+    });
+    video.srcObject=stream;
+    await video.play();
+    running=true;
+    message('Rear camera active. Automatically scanning Code 39…');
+    schedule(300);
+  }catch(e){message('Camera error: '+e.name+' '+e.message);}
+}
+function schedule(ms){clearTimeout(timer);if(running)timer=setTimeout(()=>scan(false),ms);}
+function scan(manual){
+  if(busy){if(!manual)schedule(300);return;}
+  if(!stream||!video.videoWidth){message('Start camera first.');return;}
+  if(!window.Quagga){message('Quagga2 library unavailable.');return;}
+  busy=true;
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext('2d',{willReadFrequently:true}).drawImage(video,0,0);
+  const data=canvas.toDataURL('image/jpeg',0.94);
+  attempts++;
+  if(manual)message('Capturing and decoding…');
+  let finished=false;
+  const timeout=setTimeout(()=>complete(null,'Decoder timed out.'),4500);
+  function complete(result,error){
+    if(finished)return;
+    finished=true;
+    clearTimeout(timeout);
+    busy=false;
+    if(result&&result.codeResult&&result.codeResult.code){
+      decoded(result.codeResult.code,result.codeResult.format||'code_39');
+    }else if(manual){
+      message(error||'No barcode detected in this frame. Keep the full barcode visible.');
+    }else if(running){
+      if(attempts%5===0)message('Rear camera active. Scanning Code 39… Attempt '+attempts);
+      schedule(400);
+    }
+  }
+  try{
+    Quagga.decodeSingle({
+      src:data,numOfWorkers:0,locate:true,
+      inputStream:{size:1600},
+      decoder:{readers:['code_39_reader']},
+      locator:{halfSample:false,patchSize:'medium'}
+    },result=>complete(result,null));
+  }catch(e){complete(null,'Decode error: '+e.message);}
+}
 document.getElementById('start').addEventListener('click',start);
-document.getElementById('capture').addEventListener('click',capture);
+document.getElementById('capture').addEventListener('click',()=>scan(true));
 document.getElementById('stop').addEventListener('click',()=>{stop();message('Camera stopped.');});
-document.getElementById('manualBtn').addEventListener('click',()=>decoded(document.getElementById('manual').value.trim(),'manual'));
+document.getElementById('manualBtn').addEventListener('click',()=>{
+  const id=document.getElementById('manual').value.trim();
+  if(id)decoded(id,'manual');
+});
 window.addEventListener('pagehide',stop);
-</script></body></html>
+</script>
+</body>
+</html>
