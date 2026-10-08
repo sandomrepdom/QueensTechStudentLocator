@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Queens Tech Student Locator V4.5</title>
+<title>Queens Tech Student Locator V4.6</title>
 <style>
 body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}
 header{background:#101827;color:white;padding:10px 14px;font-size:13px}header h1{font-size:19px;margin:0 0 3px}
@@ -21,7 +21,7 @@ small{color:#59677b}.dock{position:fixed;bottom:0;left:0;right:0;background:#fff
 </style>
 </head>
 <body>
-<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.5</header>
+<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.6</header>
 <main>
 <section class="card">
 <div class="camera"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
@@ -45,10 +45,21 @@ let stream=null, running=false, busy=false, timer=null, attempts=0;
 const canvas=document.createElement('canvas');
 function message(m){statusEl.textContent=m;}
 function decoded(value,format){
+  value=String(value||'').trim();
+  if(!/^\d{9}$/.test(value)){
+    // The long ID barcode is not a student ID. Keep scanning.
+    if(running){
+      message('Ignoring non-student barcode ('+value.length+' digits). Aim at the short barcode.');
+      schedule(250);
+    }else{
+      message('Not a 9-digit student ID. Aim at the short barcode.');
+    }
+    return;
+  }
   running=false;
   clearTimeout(timer);
-  message((value===expected?'SUCCESS: ':'Detected: ')+value+'\\nFormat: '+format+
-    (value===expected?'\\nTest student ID matched.':'\\nTry the smaller barcode.'));
+  message((value===expected?'SUCCESS: ':'9-digit barcode detected: ')+value+'\nFormat: '+format+
+    (value===expected?'\nTest student ID matched.':'\nNot the test ID.'));
   if(value===expected && navigator.vibrate)navigator.vibrate(150);
 }
 function stop(){
@@ -68,7 +79,7 @@ async function start(){
     video.srcObject=stream;
     await video.play();
     running=true;
-    message('Rear camera active. Automatically scanning Code 39…');
+    message('Rear camera active. Looking for the 9-digit student ID…');
     schedule(300);
   }catch(e){message('Camera error: '+e.name+' '+e.message);}
 }
@@ -96,7 +107,7 @@ function scan(manual){
     }else if(manual){
       message(error||'No barcode detected in this frame. Keep the full barcode visible.');
     }else if(running){
-      if(attempts%5===0)message('Rear camera active. Scanning Code 39… Attempt '+attempts);
+      if(attempts%5===0)message('Scanning for 9-digit student ID… Attempt '+attempts);
       schedule(400);
     }
   }
