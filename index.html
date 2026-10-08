@@ -3,29 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Queens Tech Student Locator V4.0</title>
+<title>Queens Tech Student Locator V4.1</title>
 <style>
 body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}
 header{background:#101827;color:white;padding:25px}
-main{max-width:700px;margin:auto;padding:18px}
-.card{background:white;padding:20px;border-radius:20px;margin:15px 0}
-button,input{box-sizing:border-box;width:100%;padding:16px;font-size:19px;border-radius:13px;margin:8px 0}
+main{max-width:700px;margin:auto;padding:10px}
+.card{background:white;padding:12px;border-radius:16px;margin:10px 0}
+button,input{box-sizing:border-box;width:100%;padding:12px;font-size:17px;border-radius:12px;margin:5px 0}
 button{background:#3262e8;color:white;border:0;font-weight:bold}
 button.secondary{background:#59677b}
 input{border:2px solid #aab5c5}
 .camera{position:relative}
-video{display:block;width:100%;border-radius:12px;background:#111}
+video{display:block;width:100%;height:220px;object-fit:cover;border-radius:12px;background:#111}
 .line{position:absolute;top:50%;left:8%;right:8%;border-top:2px solid white;pointer-events:none}
 #status{padding:14px;background:#e8edf9;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
 small{color:#59677b}
 </style>
 </head>
 <body>
-<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.0</header>
+<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.1</header>
 <main>
 <section class="card">
 <button id="start">Start automatic scanning</button>
-<button id="capture" class="secondary">Capture &amp; Decode (backup)</button>
+<button id="capture" class="secondary">📸 Scan this frame</button>
 <button id="stop" class="secondary">Stop camera</button>
 <div class="camera"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
 <div id="status">Ready. This test contains no student schedules.</div>
