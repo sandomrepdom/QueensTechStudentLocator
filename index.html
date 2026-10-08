@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Queens Tech Student Locator V4.9</title>
+<title>Queens Tech Student Locator V5.0</title>
 <style>
 body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}
 header{background:#101827;color:white;padding:10px 14px;font-size:13px}header h1{font-size:19px;margin:0 0 3px}
@@ -21,7 +21,7 @@ small{color:#59677b}.dock{position:fixed;bottom:0;left:0;right:0;background:#fff
 </style>
 </head>
 <body>
-<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.9</header>
+<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V5.0</header>
 <main>
 <section class="card">
 <div class="camera"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
@@ -60,7 +60,7 @@ function decoded(value,format){
   message((value===expected?'SUCCESS: ':'Nine-digit barcode: ')+value+
     '\nFormat: '+format+
     (value===expected?'\nTest ID matched.':'\nDifferent test ID.'));
-  if(value===expected && navigator.vibrate)navigator.vibrate(150);
+  if(navigator.vibrate)navigator.vibrate(100);
 }
 
 function stop(){
@@ -88,21 +88,21 @@ function schedule(ms){clearTimeout(timer);if(running)timer=setTimeout(()=>scan(f
 // Scan the upper ID barcode first. Process one crop per cycle to avoid
 // serial full-frame decoding delaying the next camera frame.
 function scan(manual){
-  if(busy)return;
+  if(busy){if(manual)message('Scanning in progress…');return;}
   if(!stream||!video.videoWidth){message('Start camera first.');return;}
   if(!window.Quagga){message('Quagga2 library unavailable.');return;}
   busy=true;
   attempts++;
   if(manual)message('Scanning small barcode…');
   const w=video.videoWidth,h=video.videoHeight;
-  // The upper half is the successful V4.8 region. Every third attempt
-  // shifts downward slightly; a full frame is a rare fallback.
-  const region=attempts%9===0 ? [0,0,1,1] :
-               attempts%3===0 ? [0,0.12,1,0.42] : [0,0,1,0.55];
+  // Focus on the upper barcode; alternate two overlapping crops to
+  // tolerate slight differences in where the user aims the phone.
+  const region=attempts%4===0 ? [0,0.10,1,0.52] : [0,0,1,0.43];
   const [rx,ry,rw,rh]=region;
   const sx=Math.round(rx*w),sy=Math.round(ry*h);
   const sw=Math.round(rw*w),sh=Math.round(rh*h);
-  // 1280px instead of 2000px: fewer pixels per decode.
+  // Keep sufficient detail for narrow Code 39 bars while processing
+  // fewer pixels than a full-resolution frame.
   canvas.width=1280;
   canvas.height=Math.round(1280*sh/sw);
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -111,13 +111,13 @@ function scan(manual){
   ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
   const data=canvas.toDataURL('image/jpeg',0.88);
   let settled=false;
-  const watchdog=setTimeout(()=>finish(null),2500);
+  const watchdog=setTimeout(()=>finish(null),2200);
   function finish(value){
     if(settled)return;
     settled=true;clearTimeout(watchdog);busy=false;
     if(value){decoded(value,'code_39');return;}
     if(manual)message('No nine-digit barcode detected. Keep aiming at the small barcode.');
-    if(running)schedule(90);
+    if(running)schedule(60);
   }
   try{
     Quagga.decodeSingle({
