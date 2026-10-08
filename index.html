@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Queens Tech Student Locator V4.4</title>
+<title>Queens Tech Student Locator V4.5</title>
 <style>
 body{margin:0;background:#eef1f6;font:18px system-ui;color:#142033}
 header{background:#101827;color:white;padding:10px 14px;font-size:13px}header h1{font-size:19px;margin:0 0 3px}
@@ -21,12 +21,9 @@ small{color:#59677b}.dock{position:fixed;bottom:0;left:0;right:0;background:#fff
 </style>
 </head>
 <body>
-<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.4</header>
+<header><h1>Queens Tech Student Locator</h1>Code 39 Auto Scanner V4.5</header>
 <main>
 <section class="card">
-<button id="start">Start automatic scanning</button>
-<button id="capture" class="secondary">📸 Scan this frame</button>
-<button id="stop" class="secondary">Stop camera</button>
 <div class="camera"><video id="video" playsinline autoplay muted></video><div class="line"></div></div>
 <div id="status">Ready. This test contains no student schedules.</div>
 <p><small>Keep the entire small barcode and a little white space at each end in view. Scanning starts automatically when the camera opens.</small></p>
@@ -36,7 +33,8 @@ small{color:#59677b}.dock{position:fixed;bottom:0;left:0;right:0;background:#fff
 <input id="manual" inputmode="numeric" placeholder="Enter test ID">
 <button id="manualBtn">Check ID</button>
 </section>
-</main>\n<div class="dock"><button id="start">Start camera</button><button id="capture">📸 Scan</button><button id="stop" class="secondary">Stop</button></div>
+</main>
+<div class="dock"><button id="start">Start camera</button><button id="capture">📸 Scan</button><button id="stop" class="secondary">Stop</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
 <script>
 'use strict';
