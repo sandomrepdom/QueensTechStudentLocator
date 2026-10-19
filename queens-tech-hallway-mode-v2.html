@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#075448">
+<title>Queens Tech | Compact Hallway Mode</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f7f5;color:#16332f}*{box-sizing:border-box}body{margin:0}header{background:#075448;color:white;padding:17px}header h1{font-size:21px;margin:0 0 4px}header p{font-size:12px;margin:0;opacity:.92}.wrap{max-width:630px;margin:auto;padding:12px}.card{background:#fff;border:1px solid #d3e0dc;border-radius:15px;padding:14px;margin-bottom:11px;box-shadow:0 2px 5px #1232}.eyebrow{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.075em;color:#55736b;margin-bottom:7px}.row{display:flex;gap:9px;align-items:center}.row>*{flex:1;min-width:0}button{border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:750;background:#096553;color:white;cursor:pointer}button.alt{background:#e1efea;color:#075448}button:disabled{opacity:.5}input,select{width:100%;min-height:43px;font-size:16px;border:1px solid #b8cfc8;border-radius:9px;padding:9px;background:white;color:#16332f}.note{font-size:12px;color:#567169;line-height:1.45}.small{font-size:13px;color:#567169}.scan{height:245px;position:relative;overflow:hidden;border-radius:12px;background:#132824;margin:10px 0}.scan>div{width:100%;height:100%}.scan:after{content:'';position:absolute;left:11%;width:78%;top:35%;height:27%;border:3px solid #6cebb3;border-radius:11px;pointer-events:none;z-index:5}.scan:before{content:'Aim at the small Code 39 barcode';position:absolute;top:10px;left:10px;background:#064d43d9;color:#fff;padding:6px 9px;font-size:12px;border-radius:5px;z-index:5}#status{font-size:13px;font-weight:650;margin:10px 0;min-height:18px}#error{font-size:13px;color:#9e2e27;white-space:pre-wrap;overflow-wrap:anywhere}#id{font-size:23px;font-weight:850;letter-spacing:2px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.name{font-size:21px;font-weight:850;margin:4px 0}.room{font-size:36px;font-weight:850;line-height:1.15;color:#075448;margin:8px 0}.details{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f3f7f5;padding:12px;border-radius:10px}.details strong{display:block;font-size:14px}.hidden{display:none!important}#setup button{margin-top:10px}#lookupMsg{font-size:13px;color:#567169;line-height:1.5;margin:8px 0}#scanTime{font-size:12px;color:#567169}#sample{font-variant-numeric:tabular-nums}footer{padding:0 12px 24px;text-align:center;font-size:11px;color:#567169;line-height:1.5}
+
+/* Compact Hallway Mode: results are prioritized after a recognized scan. */
+header{padding:12px 16px}header h1{font-size:20px}.wrap{padding:10px}.card{margin-bottom:9px;padding:12px}
+.scan{height:190px;margin:9px 0}.room{font-size:44px}.name{font-size:25px}
+#resultCard{scroll-margin-top:10px;border:2px solid #b3d8cc}
+#resultCard.found{border-color:#096553;background:#fafffd}
+#resultCard .result-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}
+#resultCard .result-heading .eyebrow{margin-bottom:0}
+#scanCard.collapsed .scan,#scanCard.collapsed #cameraControls{display:none}
+#scanCard.collapsed{padding:9px 12px}
+#scanCard.collapsed #status{margin:2px 0}
+#next{width:100%;font-size:18px;padding:16px}
+#resultCard .note{margin-bottom:0}
+#scanCard .row button{min-width:0}
+#demo{font-size:13px}
+@media (max-width:420px){.details{gap:7px}.details strong{font-size:13px}}
+</style>
+<script type="importmap">{"imports":{"@scandit/web-datacapture-core":"https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@8/build/js/index.js","@scandit/web-datacapture-barcode":"https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@8/build/js/index.js","@scandit/web-datacapture-core/":"https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@8/","@scandit/web-datacapture-barcode/":"https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@8/"}}</script>
+</head>
+<body>
+<header><h1>Queens Tech Student Locator</h1><p>Compact Hallway Mode · fictional schedule demo</p></header>
+<main class="wrap">
+<section class="card" id="setup">
+  <div class="eyebrow">Scandit Web SDK license</div>
+  <input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="Paste your Scandit trial key" aria-label="Scandit license key">
+  <button id="initialize">Load Scandit Scanner</button>
+  <p class="note">Enter the same valid web license you used in the existing test. This demo does not store your key. Scandit may receive it for licensing. A license bound to the old page may not work at a new URL.</p>
+</section>
+<section class="card" id="scanCard">
+  <div class="row"><div><div class="eyebrow">Testing period</div><select id="period" aria-label="Fictional test period"><option value="0">Period 0</option><option value="1">Period 1</option><option value="2">Period 2</option><option value="3" selected>Period 3</option><option value="4">Period 4</option><option value="5">Period 5</option><option value="6">Period 6</option><option value="7">Period 7</option><option value="8">Period 8</option><option value="9">Period 9</option><option value="10">Period 10</option></select></div><div><div class="eyebrow">Mode</div><strong>Manual test only</strong><div class="note">No bell schedule assumed</div></div></div>
+  <div class="scan"><div id="capture"></div></div>
+  <div class="row" id="cameraControls"><button id="start" disabled>Start camera</button><button id="stop" class="alt" disabled>Stop camera</button></div>
+  <p role="status" id="status">Enter a Scandit license, then load the scanner.</p><div id="error" role="alert"></div>
+</section>
+<section class="card" id="resultCard" aria-live="polite">
+  <div class="result-heading"><div class="eyebrow">Student locator · fictional data</div><span class="small" id="scanBadge">Ready</span></div>
+  <div class="small">Last scanned ID</div><div id="id">---------</div><div id="scanTime">No barcode scanned yet</div>
+  <div id="lookupMsg">Scan a Code 39 barcode or use the fictional demo button below.</div>
+  <div id="student" class="hidden">
+    <div class="name" id="studentName"></div>
+    <div class="room" id="room"></div>
+    <div class="details"><div><span class="small">Period</span><strong id="studentPeriod"></strong></div><div><span class="small">Grade</span><strong id="grade"></strong></div><div><span class="small">Course</span><strong id="course"></strong></div><div><span class="small">Teacher</span><strong id="teacher"></strong></div></div>
+  </div>
+  <div style="margin-top:12px"><button id="next" disabled>Scan Next Student</button><button class="alt" id="demo" style="width:100%;margin-top:8px">Show Fictional Student (no camera)</button></div>
+  <p class="note">Demo barcode: <strong id="sample">000000001</strong>. The demo button tests the lookup without using the camera. Scans of any other ID display “No fictional record.”</p>
+</section>
+</main>
+<footer>COMPACT TEST ONLY · No DOE authentication or real schedule connection on this public page. Never scan actual student IDs or place protected student data in this repository.</footer>
+<script type="module">
+import {DataCaptureContext,DataCaptureView,Camera,FrameSourceState} from '@scandit/web-datacapture-core';
+import {barcodeCaptureLoader,BarcodeCapture,BarcodeCaptureSettings,Symbology} from '@scandit/web-datacapture-barcode';
+const $=id=>document.getElementById(id);
+const state={context:null,view:null,camera:null,mode:null,ready:false,active:false,armed:false,startedAt:0,lastId:null,scanToken:0};
+// Test-only fictional record. Do NOT add real student records to a publicly hosted app.
+const fictionalStudent={id:'000000001',name:'ALEX SAMPLE',grade:'11',periods:{3:{room:'416',course:'COMPUTER TECH',teacher:'TEST TEACHER C'}}};
+function error(e){$('error').textContent=e?.message||String(e)}
+function status(message){$('status').textContent=message}
+function buttons(){
+ $('start').disabled=!state.ready||state.active;
+ $('stop').disabled=!state.active;
+ $('next').disabled=!state.ready||state.armed;
+}
+function showResults(){
+ $('scanCard').classList.add('collapsed');
+ $('resultCard').classList.add('found');
+ $('scanBadge').textContent='Scan complete';
+ $('resultCard').scrollIntoView({block:'start',behavior:'auto'});
+}
+function showCamera(){
+ $('scanCard').classList.remove('collapsed');
+ $('resultCard').classList.remove('found');
+ $('scanBadge').textContent='Ready';
+ $('scanCard').scrollIntoView({block:'start',behavior:'auto'});
+}
+function displayLookup(id){
+  state.lastId=id;$('id').textContent=id;
+  const period=Number($('period').value), found=id===fictionalStudent.id?fictionalStudent:null;
+  const match=found?.periods[period];
+  $('student').classList.toggle('hidden',!match);
+  if(!found){$('lookupMsg').textContent='No fictional record for this ID. This demo contains only 000000001.';return}
+  if(!match){$('lookupMsg').textContent=`ALEX SAMPLE is in the fictional demo, but no fictional schedule was defined for period ${period}. Select Period 3.`;return}
+  $('lookupMsg').textContent='Fictional schedule match';$('studentName').textContent=found.name;$('room').textContent='Room '+match.room;
+  $('studentPeriod').textContent=String(period);$('grade').textContent=found.grade;$('course').textContent=match.course;$('teacher').textContent=match.teacher;
+}
+function validScan(raw){
+  if(!state.armed)return;
+  const id=String(raw??'').trim();if(!/^\d{9}$/.test(id))return;
+  state.armed=false;state.mode.setEnabled(false).catch(error);
+  const seconds=((performance.now()-state.startedAt)/1000).toFixed(2);
+  $('scanTime').textContent=`Recognized in ${seconds}s`;
+  displayLookup(id);status('Scan complete. See student information below.');
+  showResults();buttons();
+  // Shut down the camera after a successful scan to avoid background video and battery use.
+  const token=++state.scanToken;
+  state.camera.switchToDesiredState(FrameSourceState.Off).then(()=>{
+    if(token===state.scanToken){state.active=false;buttons()}
+  }).catch(error);
+  if(navigator.vibrate)navigator.vibrate(100);
+}
+$('period').addEventListener('change',()=>{if(state.lastId)displayLookup(state.lastId)});
+$('demo').onclick=async()=>{++state.scanToken;state.armed=false;if(state.ready&&state.active){try{await state.mode.setEnabled(false);await state.camera.switchToDesiredState(FrameSourceState.Off);state.active=false}catch(e){error(e)}}$('scanTime').textContent='Fictional demo button (not a camera scan)';displayLookup('000000001');showResults();buttons()};
+$('initialize').onclick=async()=>{
+ const license=$('key').value.trim();if(!license){status('Please enter your Scandit trial license.');return}
+ $('initialize').disabled=true;$('error').textContent='';status('Loading Scandit scanner…');
+ try{
+   const view=new DataCaptureView();view.connectToElement($('capture'));view.showProgressBar();
+   const context=await DataCaptureContext.forLicenseKey(license,{libraryLocation:'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@8/sdc-lib/',moduleLoaders:[barcodeCaptureLoader()]});
+   await view.setContext(context);view.hideProgressBar();
+   const settings=new BarcodeCaptureSettings();settings.enableSymbologies([Symbology.Code39]);settings.codeDuplicateFilter=500;
+   const mode=await BarcodeCapture.forContext(context,settings);
+   mode.addListener({didScan:(_,session)=>{const barcode=session.newlyRecognizedBarcode;if(barcode)validScan(barcode.data)}});
+   await mode.setEnabled(false);
+   const camera=Camera.pickBestGuess();await camera.applySettings(BarcodeCapture.recommendedCameraSettings);await context.setFrameSource(camera);
+   Object.assign(state,{context,view,camera,mode,ready:true});$('key').value='';$('setup').classList.add('hidden');status('Scanner loaded. Tap Start camera.');buttons();
+ }catch(e){error(e);status('Scanner setup failed. See error above.');$('initialize').disabled=false}
+};
+$('start').onclick=async()=>{
+ if(!state.ready||state.active)return;showCamera();$('error').textContent='';status('Starting camera…');
+ try{await state.camera.switchToDesiredState(FrameSourceState.On);state.active=true;state.armed=true;state.startedAt=performance.now();await state.mode.setEnabled(true);status('Camera ready. Aim at a fictional nine-digit Code 39 barcode.');buttons()}
+ catch(e){error(e);status('Camera start failed.');buttons()}
+};
+$('stop').onclick=async()=>{if(!state.ready)return;++state.scanToken;state.armed=false;try{await state.mode.setEnabled(false);await state.camera.switchToDesiredState(FrameSourceState.Off);state.active=false;status('Camera stopped.');buttons()}catch(e){error(e)}};
+$('next').onclick=async()=>{
+ if(!state.ready||state.armed)return;
+ ++state.scanToken;state.armed=false;showCamera();
+ $('error').textContent='';$('scanTime').textContent='Waiting for another barcode';
+ $('student').classList.add('hidden');$('lookupMsg').textContent='Scan a fictional nine-digit barcode.';
+ $('id').textContent='---------';state.lastId=null;
+ try{
+   if(state.active){await state.mode.setEnabled(false);await state.camera.switchToDesiredState(FrameSourceState.Off);state.active=false}
+   await state.camera.switchToDesiredState(FrameSourceState.On);
+   state.active=true;state.startedAt=performance.now();state.armed=true;
+   await state.mode.setEnabled(true);
+   status('Camera ready. Aim at a fictional Code 39 barcode.');buttons();
+ }catch(e){state.armed=false;error(e);status('Camera could not restart. Try Start camera.');buttons()}
+};
+window.addEventListener('pagehide',()=>{if(state.mode)state.mode.setEnabled(false).catch(()=>{});if(state.camera)state.camera.switchToDesiredState(FrameSourceState.Off).catch(()=>{})});
+</script>
+</body>
+</html>
